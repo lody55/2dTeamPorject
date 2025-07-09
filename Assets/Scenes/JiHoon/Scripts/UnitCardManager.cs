@@ -26,6 +26,9 @@ namespace JiHoon
         [Header("카드덱 모드 선택")]
         public bool useHearthstoneStyle = true;
 
+        [Header("카드 개수 제한")]
+        public int maxCardCount = 10; // 최대 카드 개수
+
         // 현재 카드 목록 (관리용)
         private List<GameObject> currentCards = new List<GameObject>();
 
@@ -58,6 +61,13 @@ namespace JiHoon
 
             for (int i = 0; i < count; i++)
             {
+                // 최대 개수 확인
+                if (currentCards.Count >= maxCardCount)
+                {
+                    Debug.Log($"카드덱이 가득참! 최대 {maxCardCount}장");
+                    break;
+                }
+
                 int idx = Random.Range(0, total);
 
                 if (useHearthstoneStyle && hearthstoneDeck != null)
@@ -82,14 +92,39 @@ namespace JiHoon
                     currentCards.Add(go);
                 }
             }
+
+            Debug.Log($"현재 카드 개수: {currentCards.Count}/{maxCardCount}");
         }
 
         public void AddCardFromShopItem(ItemData item)
         {
-            if (item == null || item.unitPrefab == null) return;
+            Debug.Log($"=== AddCardFromShopItem 시작 ===");
+            Debug.Log($"아이템: {item?.itemName}");
+
+            if (item == null || item.unitPrefab == null)
+            {
+                Debug.LogWarning("유효하지 않은 아이템입니다.");
+                return;
+            }
+
+            // 강제로 null 카드 정리
+            CleanupNullCards();
+
+            Debug.Log($"정리 후 현재 카드 개수: {currentCards.Count}");
+            Debug.Log($"최대 카드 개수: {maxCardCount}");
+
+            // ★★★ 올바른 최대 개수 확인 ★★★
+            if (currentCards.Count >= maxCardCount)
+            {
+                Debug.Log($"카드덱이 가득참! 최대 {maxCardCount}장. 상점 아이템을 추가할 수 없습니다.");
+                ShowDeckFullWarning();
+                return;
+            }
 
             if (useHearthstoneStyle && hearthstoneDeck != null)
             {
+                Debug.Log(" 카드 추가 시작");
+
                 // 하스스톤 스타일
                 var tempGo = CreateTempCardUI(-1, item.icon, true, item);
                 var tempUI = tempGo.GetComponent<UnitCardUI>();
@@ -100,32 +135,84 @@ namespace JiHoon
                 hearthstoneDeck.AddCard(tempUI);
                 tempGo.SetActive(false);
                 currentCards.Add(tempGo);
+
+                Debug.Log($"카드 추가 완료. tempGo: {tempGo.name}");
             }
             else
             {
+                Debug.Log("기존 방식 카드 추가 시작");
+
                 // 기존 방식
                 var go = Instantiate(cardUIPrefab, deckContainer);
                 var ui = go.GetComponent<UnitCardUI>();
                 ui.InitFromShopItem(item, placementMgr);
                 currentCards.Add(go);
+
+                Debug.Log($"기존 방식 카드 추가 완료. go: {go.name}");
             }
+
+            Debug.Log($"상점 아이템 추가 완료. 현재 카드 개수: {currentCards.Count}/{maxCardCount}");
+            Debug.Log($"=== AddCardFromShopItem 완료 ===");
+        }
+
+        private void ShowDeckFullWarning()
+        {
+            // UI 경고 표시 (옵션)
+            Debug.LogWarning("카드덱이 가득 찼습니다! 카드를 사용한 후 다시 시도해주세요.");
+
+            // 실제 UI 팝업을 띄우고 싶다면 여기에 추가
+            // 예: warningPopup.Show("카드덱이 가득 찼습니다!");
         }
 
         private GameObject CreateTempCardUI(int presetIndex, Sprite icon, bool isFromShop, ItemData shopItem)
         {
+            Debug.Log($"CreateTempCardUI 시작 - isFromShop: {isFromShop}, shopItem: {shopItem?.itemName}");
+
             var go = Instantiate(cardUIPrefab);
             var ui = go.GetComponent<UnitCardUI>();
 
-            if (isFromShop)
-                ui.InitFromShopItem(shopItem, placementMgr);
-            else
-                ui.Init(presetIndex, icon, placementMgr);
+            if (ui == null)
+            {
+                Debug.LogError("UnitCardUI 컴포넌트를 찾을 수 없습니다!");
+                return go;
+            }
 
+            if (isFromShop)
+            {
+                Debug.Log("상점 아이템으로 초기화");
+                ui.InitFromShopItem(shopItem, placementMgr);
+            }
+            else
+            {
+                Debug.Log("프리셋으로 초기화");
+                ui.Init(presetIndex, icon, placementMgr);
+            }
+
+            Debug.Log($"CreateTempCardUI 완료 - 생성된 오브젝트: {go.name}");
             return go;
         }
 
         public void RemoveCard(UnitCardUI cardUI)
         {
+            Debug.Log($"=== RemoveCard 호출 ===");
+            Debug.Log($"찾는 카드: {cardUI?.name}");
+            Debug.Log($"제거 전 카드 개수: {currentCards.Count}");
+
+            // 현재 카드 목록 출력
+            for (int i = 0; i < currentCards.Count; i++)
+            {
+                if (currentCards[i] != null)
+                {
+                    var ui = currentCards[i].GetComponent<UnitCardUI>();
+                    Debug.Log($"  카드 {i}: {currentCards[i].name} (UnitCardUI: {ui?.name})");
+                }
+                else
+                {
+                    Debug.Log($"  카드 {i}: NULL");
+                }
+            }
+
+            bool found = false;
             for (int i = currentCards.Count - 1; i >= 0; i--)
             {
                 if (currentCards[i] != null)
@@ -133,32 +220,75 @@ namespace JiHoon
                     var ui = currentCards[i].GetComponent<UnitCardUI>();
                     if (ui == cardUI)
                     {
+                        Debug.Log($"카드 찾음! 인덱스: {i}, 제거할 오브젝트: {currentCards[i].name}");
                         Destroy(currentCards[i]);
                         currentCards.RemoveAt(i);
+                        found = true;
                         break;
                     }
                 }
+                else
+                {
+                    // null 카드 정리
+                    Debug.Log($"null 카드 발견 및 제거: 인덱스 {i}");
+                    currentCards.RemoveAt(i);
+                }
             }
-        }
 
-        public void ClearAllCards()
-        {
-            foreach (var card in currentCards)
+            if (found)
             {
-                if (card != null)
-                    Destroy(card);
+                Debug.Log($"카드 제거 완료! 현재 카드 개수: {currentCards.Count}/{maxCardCount}");
             }
-            currentCards.Clear();
+            else
+            {
+                Debug.LogWarning("제거할 카드를 찾지 못했습니다!");
+                Debug.LogWarning($"찾으려던 카드 주소: {cardUI?.GetHashCode()}");
+            }
 
-            if (useHearthstoneStyle && hearthstoneDeck != null)
-                hearthstoneDeck.ClearAllCards();
+            Debug.Log($"=== RemoveCard 완료 ===");
         }
 
+        // 추가: null 카드들 정리하는 메서드
+        public void CleanupNullCards()
+        {
+            int removed = 0;
+            for (int i = currentCards.Count - 1; i >= 0; i--)
+            {
+                if (currentCards[i] == null)
+                {
+                    currentCards.RemoveAt(i);
+                    removed++;
+                }
+            }
+
+            if (removed > 0)
+            {
+                Debug.Log($"{removed}개의 null 카드 정리됨. 현재 카드 개수: {currentCards.Count}");
+            }
+        }
+
+        // GetCardCount 메서드도 수정
         public int GetCardCount()
         {
+            // null 카드 정리
+            CleanupNullCards();
             return currentCards.Count;
         }
 
+        // IsCardDeckFull 메서드도 수정
+        public bool IsCardDeckFull()
+        {
+            // null 카드 정리
+            CleanupNullCards();
+            return currentCards.Count >= maxCardCount;
+        }
+
+        public int GetRemainingSlots()
+        {
+            return maxCardCount - currentCards.Count;
+        }
+
+        // 기존 메서드들 유지
         public void SetHearthstoneMode(bool enable)
         {
             useHearthstoneStyle = enable;
@@ -204,5 +334,7 @@ namespace JiHoon
                 }
             }
         }
+
+
     }
 }

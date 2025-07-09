@@ -35,12 +35,37 @@ namespace JiHoon
             selectedCard = card;
         }
 
+
         public void OnCardPlaced()
         {
             if (selectedCard != null)
             {
+                Debug.Log($"OnCardPlaced 호출됨. 제거할 카드: {selectedCard.name}");
+
+                // UnitCardManager에서 카드 제거
+                var cardManager = FindFirstObjectByType<UnitCardManager>();
+                if (cardManager != null)
+                {
+                    // selectedCard의 originalCard를 찾아서 제거
+                    var originalCardUI = selectedCard.originalCard;
+                    if (originalCardUI != null)
+                    {
+                        Debug.Log($"originalCard 찾음: {originalCardUI.name}");
+                        cardManager.RemoveCard(originalCardUI);
+                    }
+                    else
+                    {
+                        Debug.LogWarning("originalCard가 null입니다!");
+                    }
+                }
+
+                // 덱에서 카드 제거
                 RemoveCard(selectedCard.cardIndex);
                 selectedCard = null;
+            }
+            else
+            {
+                Debug.LogWarning("selectedCard가 null입니다!");
             }
         }
 
@@ -260,5 +285,6 @@ namespace JiHoon
                 }
             }
         }
+
     }
 }

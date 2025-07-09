@@ -245,7 +245,7 @@ namespace JiHoon
                 foreach (var cell in footprint)
                     gridManager.previewTilemap.SetTile(cell, gridManager.placementPreviewTile);
 
-            // 2-4) 설치 확정
+            // 2-4) 설치 확정 부분에서 중복 제거
             if (canPlace
                 && Input.GetMouseButtonDown(0)
                 && !EventSystem.current.IsPointerOverGameObject())
@@ -276,27 +276,26 @@ namespace JiHoon
                     gridManager.OccupyCells(new HashSet<Vector3Int>(footprint), spawnedUnit);
                 }
 
+                // ★★★ SimpleCardDeck에서만 처리하도록 수정 ★★★
                 if (selectedCardUI != null)
                 {
                     var cardDeck = FindFirstObjectByType<SimpleCardDeck>();
                     if (cardDeck != null)
                     {
-                        // 하스스톤 덱에서만 제거
+                        // SimpleCardDeck이 모든 제거 처리를 담당
                         cardDeck.OnCardPlaced();
                     }
                     else
                     {
-                        // 기존 방식은 직접 제거
+                        // SimpleCardDeck이 없는 경우에만 직접 처리
+                        var cardManager = FindFirstObjectByType<UnitCardManager>();
+                        if (cardManager != null)
+                        {
+                            cardManager.RemoveCard(selectedCardUI);
+                        }
                         Destroy(selectedCardUI.gameObject);
                     }
                     selectedCardUI = null;
-                }
-
-                // 카드덱에 배치 완료 알림 (추가)
-                var card_Deck = FindFirstObjectByType<SimpleCardDeck>();
-                if (card_Deck != null)
-                {
-                    card_Deck.OnCardPlaced();
                 }
 
                 // 모드 종료
