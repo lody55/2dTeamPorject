@@ -430,7 +430,7 @@ GameObject:
   - component: {fileID: 353809961183880960}
   - component: {fileID: 6458001922697312151}
   - component: {fileID: -2420492565539389044}
-  - component: {fileID: 8581317276981376240}
+  - component: {fileID: -7064894059135924630}
   m_Layer: 5
   m_Name: Enemy1
   m_TagString: Unit
@@ -3677,7 +3677,7 @@ MonoBehaviour:
   animator: {fileID: 3849104699504804562}
   animationData: {fileID: 11400000, guid: cc1766e71ff3dc841815f1c605757732, type: 2}
   unitID: 99
---- !u!50 &8581317276981376240
+--- !u!50 &-7064894059135924630
 Rigidbody2D:
   serializedVersion: 5
   m_ObjectHideFlags: 0
