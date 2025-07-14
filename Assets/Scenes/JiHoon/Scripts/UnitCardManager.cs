@@ -64,13 +64,20 @@ namespace JiHoon
 
                 int idx = Random.Range(0, total);
 
+                // cardData가 null인지 확인
+                if (presets[idx].cardData == null) continue;
+
+                var cardData = presets[idx].cardData;
+
                 if (useHearthstoneStyle && hearthstoneDeck != null)
                 {
                     // 원본 카드 생성 (UnitCardManager가 관리)
                     var originalCard = Instantiate(cardUIPrefab);
                     originalCard.name = $"Card_Preset{idx}_{currentCards.Count}";
                     var originalUI = originalCard.GetComponent<UnitCardUI>();
-                    originalUI.Init(idx, presets[idx].icon, placementMgr);
+
+                    // hoverIcon도 함께 전달
+                    originalUI.Init(idx, cardData.unitIcon, cardData.hoverIcon, placementMgr);
 
                     currentCards.Add(originalCard);
                     originalCard.SetActive(false);  // UI에는 표시하지 않음
@@ -83,11 +90,15 @@ namespace JiHoon
                     // 기존 방식 (직접 UI에 표시)
                     var go = Instantiate(cardUIPrefab, deckContainer);
                     var ui = go.GetComponent<UnitCardUI>();
-                    ui.Init(idx, presets[idx].icon, placementMgr);
+
+                    // hoverIcon도 함께 전달
+                    ui.Init(idx, cardData.unitIcon, cardData.hoverIcon, placementMgr);
                     currentCards.Add(go);
                 }
             }
         }
+
+
 
         // 상점에서 구매한 카드 추가
         public void AddCardFromShopItem(ItemData item)
