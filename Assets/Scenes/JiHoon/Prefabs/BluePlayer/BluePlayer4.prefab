@@ -5541,13 +5541,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   unitID: 4
-  unitName: 4
+  unitName: "\uB4C0\uB77C\uD55C"
   faction: 0
   baseRawSize: 1
   baseColSize: 1
   baseSplash: 0
-  baseHealth: 50
-  baseDamage: 1
+  baseHealth: 500
+  baseDamage: 150
   baseAtkSpd: 1
   baseRange: 2
   baseSpd: 1
@@ -5595,8 +5595,8 @@ CapsuleCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
-  m_Size: {x: 0.5, y: 1}
+  m_Offset: {x: 0, y: 0.4}
+  m_Size: {x: 0.1, y: 0.3}
   m_Direction: 0
 --- !u!114 &6600835865580263475
 MonoBehaviour:

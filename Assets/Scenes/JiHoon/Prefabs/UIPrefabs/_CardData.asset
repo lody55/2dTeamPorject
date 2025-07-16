@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a672bf3107475b4187c693cb839cf33, type: 3}
   m_Name: _CardData
   m_EditorClassIdentifier: 
-  cardName: TestCard
+  cardName: TestCard1
   description: 'This is Test Card
 
     for Script Test'
