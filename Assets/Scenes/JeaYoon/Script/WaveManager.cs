@@ -1,42 +1,42 @@
 using TMPro;
-using UnityEditor.Build.Content;
+//using UnityEditor.Build.Content;
 using UnityEngine;
 
-/* [0] °³¿ä : WaveManager
-		- EnemyÀÇ ½ºÆù ¹× ¿þÀÌºê¸¦ °ü¸®ÇÏ´Â ½ºÅ©¸³Æ®.
+/* [0] ê°œìš” : WaveManager
+		- Enemyì˜ ìŠ¤í° ë° ì›¨ì´ë¸Œë¥¼ ê´€ë¦¬í•˜ëŠ” ìŠ¤í¬ë¦½íŠ¸.
 */
 
 public class WaveManager : MonoBehaviour
 {
     // [1] Variable.
-    #region ¡å¡å¡å¡å¡å Variable ¡å¡å¡å¡å¡å
-    // [¡ß] - ¢º¢º¢º ¿þÀÌºê.
-    public WaveManager[] waves;          // ) ¿þÀÌºê µ¥ÀÌÅÍ ¼ÂÆÃ : Enemy ÇÁ¸®ÆÕ, Enemy »ý¼º °¹¼ö, Enemy Á¨ µô·¹ÀÌ Å¸ÀÓ.
-    public float waveTimer = 5f;            // ) Å¸ÀÌ¸Ó.
-    private int waveCount = 0;              // ) ¿þÀÌºê Ä«¿îÆ®.
-    public GameObject startButton;        // ) ¿þÀÌºê ½ºÅ¸Æ® ¹öÆ°.
-    public GameObject waveInfo;           // ) ¿þÀÌºê Á¤º¸.
-    private int enemyCount;                 // ) ¿þÀÌºê¿¡¼­ »ý¼ºÇÒ Enemy °¹¼ö.
+    #region â–¼â–¼â–¼â–¼â–¼ Variable â–¼â–¼â–¼â–¼â–¼
+    // [â—†] - â–¶â–¶â–¶ ì›¨ì´ë¸Œ.
+    public WaveManager[] waves;          // ) ì›¨ì´ë¸Œ ë°ì´í„° ì…‹íŒ… : Enemy í”„ë¦¬íŒ¹, Enemy ìƒì„± ê°¯ìˆ˜, Enemy ì   ë”œë ˆì´ íƒ€ìž„.
+    public float waveTimer = 5f;            // ) íƒ€ì´ë¨¸.
+    private int waveCount = 0;              // ) ì›¨ì´ë¸Œ ì¹´ìš´íŠ¸.
+    public GameObject startButton;        // ) ì›¨ì´ë¸Œ ìŠ¤íƒ€íŠ¸ ë²„íŠ¼.
+    public GameObject waveInfo;           // ) ì›¨ì´ë¸Œ ì •ë³´.
+    private int enemyCount;                 // ) ì›¨ì´ë¸Œì—ì„œ ìƒì„±í•  Enemy ê°¯ìˆ˜.
 
 
-    // [¡ß] - ¢º¢º¢º ETC.
-    public static int enemyAlive = 0;       // ) ÇöÀç °ÔÀÓÈ­¸é¿¡¼­ »ì¾ÆÀÖ´Â EnemyÀÇ ¼ýÀÚ.
-    public Transform startPoint;            // ) Enemy ½ºÆù À§Ä¡.
+    // [â—†] - â–¶â–¶â–¶ ETC.
+    public static int enemyAlive = 0;       // ) í˜„ìž¬ ê²Œìž„í™”ë©´ì—ì„œ ì‚´ì•„ìžˆëŠ” Enemyì˜ ìˆ«ìž.
+    public Transform startPoint;            // ) Enemy ìŠ¤í° ìœ„ì¹˜.
     private float countdown = 0f;
     public TextMeshProUGUI countText;       // ) Text.
-    public GameManager gameManager;         // ) °ÔÀÓ¸Å´ÏÀú.
-    #endregion ¡ã¡ã¡ã¡ã¡ã Variable ¡ã¡ã¡ã¡ã¡ã
+    public GameManager gameManager;         // ) ê²Œìž„ë§¤ë‹ˆì €.
+    #endregion â–²â–²â–²â–²â–² Variable â–²â–²â–²â–²â–²
 
 
 
 
 
     // [2] Unity Event Method.
-    #region ¡å¡å¡å¡å¡å Unity Event Method ¡å¡å¡å¡å¡å
-    // [¡ß] - ¢º¢º¢º Start.
+    #region â–¼â–¼â–¼â–¼â–¼ Unity Event Method â–¼â–¼â–¼â–¼â–¼
+    // [â—†] - â–¶â–¶â–¶ Start.
     private void Start()
     {
-        // [¡Þ] - [¡ß] - ) °ÔÀÓÀ» ½ÃÀÛ ÇÒ ¶§ ¸ðµç º¯¼ö¸¦ ÃÊ±âÈ­ÇØ¼­ ¿À·ù¾øÀÌ Ã¹ ¿þÀÌºêºÎÅÍ Á¤»óÀûÀ¸·Î ÀÛµ¿ÇÒ ¼ö ÀÖ°Ô ÇÔ.
+        // [â—‡] - [â—†] - ) ê²Œìž„ì„ ì‹œìž‘ í•  ë•Œ ëª¨ë“  ë³€ìˆ˜ë¥¼ ì´ˆê¸°í™”í•´ì„œ ì˜¤ë¥˜ì—†ì´ ì²« ì›¨ì´ë¸Œë¶€í„° ì •ìƒì ìœ¼ë¡œ ìž‘ë™í•  ìˆ˜ ìžˆê²Œ í•¨.
         countdown = 3f;
         waveCount = 0;
         enemyAlive = 0;
@@ -44,38 +44,38 @@ public class WaveManager : MonoBehaviour
     }
 
 
-    // [¡ß] - ¢º¢º¢º Update.
+    // [â—†] - â–¶â–¶â–¶ Update.
     private void Update()
     {
-        // [¡Þ] - [¡ß] - ) ÇöÀç ¸Ê¿¡ Enemy°¡ ³²¾ÆÀÖ´ÂÁö ¿©ºÎ¸¦ Ã¼Å©ÇÏ¿© Á¨ ¹× Ä«¿îÆ®´Ù¿îÀ» ¸·À½.
+        // [â—‡] - [â—†] - ) í˜„ìž¬ ë§µì— Enemyê°€ ë‚¨ì•„ìžˆëŠ”ì§€ ì—¬ë¶€ë¥¼ ì²´í¬í•˜ì—¬ ì   ë° ì¹´ìš´íŠ¸ë‹¤ìš´ì„ ë§‰ìŒ.
         if (enemyAlive > 0)
         {
-            // [¡Þ] - [¡Þ] - [¡ß] ) 147.
+            // [â—‡] - [â—‡] - [â—†] ) 147.
 
         }
     }
 
-    // [¡Þ] - [¡ß] - ) 789.
-    // [¡Þ] - [¡Þ] - [¡ß] ) 147.
-    // [¡Þ] - [¡Þ] - [¡Þ] - [¡ß] ) 258.
-    // [¡Þ] - [¡Þ] - [¡Þ] - [¡Þ] - [¡ß] ) 369.
-    #endregion ¡ã¡ã¡ã¡ã¡ã Unity Event Method ¡ã¡ã¡ã¡ã¡ã
+    // [â—‡] - [â—†] - ) 789.
+    // [â—‡] - [â—‡] - [â—†] ) 147.
+    // [â—‡] - [â—‡] - [â—‡] - [â—†] ) 258.
+    // [â—‡] - [â—‡] - [â—‡] - [â—‡] - [â—†] ) 369.
+    #endregion â–²â–²â–²â–²â–² Unity Event Method â–²â–²â–²â–²â–²
 
 
 
 
 
     // [4] Custom Method.
-    #region ¡å¡å¡å¡å¡å Custom Method ¡å¡å¡å¡å¡å
-    // [¡ß] - ¢º¢º¢º 123.
+    #region â–¼â–¼â–¼â–¼â–¼ Custom Method â–¼â–¼â–¼â–¼â–¼
+    // [â—†] - â–¶â–¶â–¶ 123.
 
 
-    // [¡ß] - ¢º¢º¢º 456.
+    // [â—†] - â–¶â–¶â–¶ 456.
 
 
-    // [¡Þ] - [¡ß] - ) 789.
-    // [¡Þ] - [¡Þ] - [¡ß] ) 147.
-    // [¡Þ] - [¡Þ] - [¡Þ] - [¡ß] ) 258.
-    // [¡Þ] - [¡Þ] - [¡Þ] - [¡Þ] - [¡ß] ) 369.
-    #endregion ¡ã¡ã¡ã¡ã¡ã Custom Method ¡ã¡ã¡ã¡ã¡ã
+    // [â—‡] - [â—†] - ) 789.
+    // [â—‡] - [â—‡] - [â—†] ) 147.
+    // [â—‡] - [â—‡] - [â—‡] - [â—†] ) 258.
+    // [â—‡] - [â—‡] - [â—‡] - [â—‡] - [â—†] ) 369.
+    #endregion â–²â–²â–²â–²â–² Custom Method â–²â–²â–²â–²â–²
 }

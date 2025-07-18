@@ -8,25 +8,21 @@ namespace JiHoon
     {
         [Header("이동 설정")]
         public float moveSpeed = 3f;
-
-        [Header("그룹 설정")]
-        public float separationRadius = 1f;
-        public float followDistance = 2f;
+        public float moveStartDelay = 0.5f; // 이동 시작 전 대기 시간
 
         // 경로 정보
         private Transform[] waypoints;
         private int currentWaypointIndex = 0;
 
-        // 그룹 정보
-        private bool isLeader = false;
+        // 그룹 정보 (스폰 시에만 사용)
         private EnemyGroup myGroup;
-        private Vector3 formationOffset;
-        private EnemyMovement leaderReference;
+        private float currentDelay = 0f;
+        private bool hasStartedMoving = false;
 
-        // ★ 추가: 중복 처리 방지용 플래그 ★
+        // 중복 처리 방지용 플래그
         private bool hasReachedDestination = false;
 
-        // ★ 추가: 전투 시스템 참조 ★
+        // 전투 시스템 참조
         private BattleBase battleBase;
         private bool isInCombat = false;
 
@@ -34,30 +30,38 @@ namespace JiHoon
         {
             // BattleBase 컴포넌트 참조 가져오기
             battleBase = GetComponent<BattleBase>();
+
+            // 각 유닛마다 약간 다른 딜레이를 주어 자연스러운 움직임
+            currentDelay = moveStartDelay + Random.Range(0f, 0.2f);
         }
 
         void Update()
         {
             if (waypoints == null || waypoints.Length == 0) return;
 
-            // ★ 전투 중인지 체크 ★
-            CheckCombatStatus();
-
-            // 전투 중이면 이동 중지
-            if (isInCombat)
+            // 이동 시작 전 대기
+            if (!hasStartedMoving)
             {
+                currentDelay -= Time.deltaTime;
+                if (currentDelay <= 0)
+                {
+                    hasStartedMoving = true;
+                }
                 return;
             }
 
-            // 전투 중이 아닐 때만 이동
-            if (isLeader)
+            // 전투 중인지 체크
+            CheckCombatStatus();
+
+            // 전투 중이면 이동 중지 - 완전히 멈춤
+            if (isInCombat)
             {
-                MoveAsLeader();
+                // 전투 중에는 아무것도 하지 않음
+                return;
             }
-            else
-            {
-                MoveAsFollower();
-            }
+
+            // 전투가 끝났을 때만 독립적으로 이동
+            MoveIndependently();
         }
 
         void CheckCombatStatus()
@@ -73,7 +77,7 @@ namespace JiHoon
                 {
                     var targetList = combatTargets.GetValue(battleBase) as System.Collections.Generic.List<GameObject>;
 
-                    // ★ 전투 타겟이 있고, 그 타겟이 살아있으면 계속 전투 중 ★
+                    // 전투 타겟이 있고, 그 타겟이 살아있으면 계속 전투 중
                     if (targetList != null && targetList.Count > 0)
                     {
                         // 살아있는 적이 있는지 확인
@@ -98,7 +102,7 @@ namespace JiHoon
                     }
                 }
 
-                // currentState도 체크하되, Idle이나 Detecting이 아닌 경우만
+                // currentState도 체크
                 var stateField = battleBase.GetType().GetField("currentState",
                     System.Reflection.BindingFlags.NonPublic |
                     System.Reflection.BindingFlags.Instance);
@@ -106,8 +110,8 @@ namespace JiHoon
                 if (stateField != null)
                 {
                     var currentState = stateField.GetValue(battleBase).ToString();
-                    // Idle이나 Detecting 상태가 아니면 전투 중
-                    if (currentState != "Idle" && currentState != "Detecting" && currentState != "Dead")
+                    // Idle, Detecting, Dead가 아닌 모든 상태를 전투 중으로 간주
+                    if (currentState == "Engaging" || currentState == "Moving" || currentState == "Fighting")
                     {
                         isInCombat = true;
                     }
@@ -115,7 +119,7 @@ namespace JiHoon
             }
         }
 
-        void MoveAsLeader()
+        void MoveIndependently()
         {
             if (currentWaypointIndex >= waypoints.Length)
             {
@@ -124,8 +128,52 @@ namespace JiHoon
             }
 
             Vector3 targetPos = waypoints[currentWaypointIndex].position;
+            Vector3 moveDirection = (targetPos - transform.position).normalized;
 
-            // ★ 전투 중이 아닐 때만 실제 이동 ★
+            // ★ 전방에 장애물(전투 중인 유닛) 체크 ★
+            RaycastHit2D hit = Physics2D.CircleCast(
+                transform.position,
+                0.5f, // 감지 반경
+                moveDirection,
+                1f, // 감지 거리
+                LayerMask.GetMask("Unit") // Unit 레이어만 체크
+            );
+
+            if (hit.collider != null && hit.collider.gameObject != gameObject)
+            {
+                // 장애물이 전투 중인지 확인
+                var otherBattleBase = hit.collider.GetComponent<MainGame.Units.Battle.BattleBase>();
+                if (otherBattleBase != null)
+                {
+                    var stateField = otherBattleBase.GetType().GetField("currentState",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Instance);
+
+                    if (stateField != null)
+                    {
+                        var state = stateField.GetValue(otherBattleBase).ToString();
+
+                        // 전투 중인 유닛이면 우회
+                        if (state == "Fighting" || state == "Moving" || state == "Engaging")
+                        {
+                            // 왼쪽 또는 오른쪽으로 우회
+                            Vector3 avoidDirection = Vector3.Cross(Vector3.forward, moveDirection);
+
+                            // 왼쪽이 막혔으면 오른쪽으로
+                            RaycastHit2D leftCheck = Physics2D.Raycast(transform.position, -avoidDirection, 1f);
+                            if (leftCheck.collider != null)
+                            {
+                                avoidDirection = -avoidDirection;
+                            }
+
+                            // 우회 이동
+                            transform.position += avoidDirection * moveSpeed * 0.7f * Time.deltaTime;
+                        }
+                    }
+                }
+            }
+
+            // 목표 지점으로 이동
             transform.position = Vector3.MoveTowards(transform.position, targetPos, moveSpeed * Time.deltaTime);
 
             // 웨이포인트 도달 체크
@@ -135,98 +183,38 @@ namespace JiHoon
             }
         }
 
-        void MoveAsFollower()
-        {
-            if (leaderReference == null) return;
-
-            // 리더 기준 목표 위치
-            Vector3 targetPos = leaderReference.transform.position + formationOffset;
-
-            // 다른 유닛과의 분리
-            Vector3 separation = CalculateSeparation();
-            targetPos += separation;
-
-            // ★ 전투 중이 아닐 때만 실제 이동 ★
-            float speed = moveSpeed;
-            float distToTarget = Vector3.Distance(transform.position, targetPos);
-
-            // 너무 멀면 빠르게 따라잡기
-            if (distToTarget > followDistance * 2)
-            {
-                speed = moveSpeed * 1.5f;
-            }
-
-            transform.position = Vector3.MoveTowards(transform.position, targetPos, speed * Time.deltaTime);
-
-            // 리더가 도착했으면 팔로워도 도착 처리
-            if (leaderReference.currentWaypointIndex >= leaderReference.waypoints.Length)
-            {
-                OnReachedDestination();
-            }
-        }
-
-        Vector3 CalculateSeparation()
-        {
-            Vector3 separationForce = Vector3.zero;
-            int neighborCount = 0;
-
-            if (myGroup != null)
-            {
-                foreach (var member in myGroup.GetMembers())
-                {
-                    if (member != this && member != null)
-                    {
-                        float distance = Vector3.Distance(transform.position, member.transform.position);
-                        if (distance < separationRadius && distance > 0)
-                        {
-                            Vector3 diff = (transform.position - member.transform.position) / distance;
-                            separationForce += diff;
-                            neighborCount++;
-                        }
-                    }
-                }
-            }
-
-            if (neighborCount > 0)
-            {
-                separationForce /= neighborCount;
-                separationForce = separationForce.normalized * 0.5f;
-            }
-
-            return separationForce;
-        }
-
         public void SetPath(Transform[] path)
         {
             waypoints = path;
             currentWaypointIndex = 0;
         }
 
+        // 기존 메서드들은 호환성을 위해 유지하되, 실제로는 사용하지 않음
         public void SetAsLeader()
         {
-            isLeader = true;
-            formationOffset = Vector3.zero;
+            // 리더 설정은 무시하고 딜레이만 약간 짧게
+            currentDelay = moveStartDelay * 1f;
         }
 
         public void SetAsFollower(Vector3 offset)
         {
-            isLeader = false;
-            formationOffset = offset;
+            // 팔로워도 독립적으로 이동, 딜레이만 약간 길게
+            currentDelay = moveStartDelay * 1.2f;
         }
 
         public void SetGroup(EnemyGroup group, EnemyMovement leader = null)
         {
             myGroup = group;
-            leaderReference = leader;
+            // 리더 참조는 무시
         }
 
         void OnReachedDestination()
         {
-            // ★ 중복 호출 방지 ★
+            // 중복 호출 방지
             if (hasReachedDestination) return;
             hasReachedDestination = true;
 
-            // ★ WaveController에 적 제거 알림 ★
+            // WaveController에 적 제거 알림
             var waveController = WaveController.Instance;
             if (waveController != null)
             {
@@ -243,30 +231,31 @@ namespace JiHoon
 
         void OnDestroy()
         {
-            // ★ 도착이 아닌 다른 이유로 파괴될 때 (예: 플레이어가 처치) ★
+            if (myGroup != null)
+            {
+                myGroup.RemoveMember(this);
+            }
+
+            // 도착이 아닌 다른 이유로 파괴될 때 (예: 플레이어가 처치)
             if (!hasReachedDestination)
             {
                 var waveController = WaveController.Instance;
                 if (waveController != null)
                 {
                     waveController.OnEnemyDeath();
-                    //Debug.Log($"적 파괴! 남은 적: {waveController.enemyCount - 1}");
                 }
+                return;
             }
 
-            //적이 죽지않고 목표에 도달했을 때
-            if (TryGetComponent<EnemyUnitBase>(out EnemyUnitBase ub)) {
+            // 적이 죽지않고 목표에 도달했을 때
+            if (TryGetComponent<EnemyUnitBase>(out EnemyUnitBase ub))
+            {
                 Debug.Log("유닛 패널티 전달");
                 ub.GivePenalty();
             }
-
-            if (myGroup != null)
-            {
-                myGroup.RemoveMember(this);
-            }
         }
 
-        // ★ 추가: 적이 공격받아 죽을 때 호출할 메서드 ★
+        // 적이 공격받아 죽을 때 호출할 메서드
         public void Die()
         {
             hasReachedDestination = true; // 중복 처리 방지
@@ -287,7 +276,7 @@ namespace JiHoon
             Destroy(gameObject);
         }
 
-        // ★ 추가: 전투 상태 설정을 위한 public 메서드 ★
+        // 전투 상태 설정을 위한 public 메서드
         public void SetCombatStatus(bool inCombat)
         {
             isInCombat = inCombat;
@@ -295,22 +284,36 @@ namespace JiHoon
 
         void OnDrawGizmos()
         {
-            if (isLeader)
+            // 이동 시작 전
+            if (!hasStartedMoving)
             {
-                Gizmos.color = Color.blue;
-                Gizmos.DrawWireSphere(transform.position, 0.3f);
-            }
-            else
-            {
-                Gizmos.color = Color.yellow;
+                Gizmos.color = Color.gray;
                 Gizmos.DrawWireSphere(transform.position, 0.2f);
             }
-
-            // 전투 중일 때 빨간색으로 표시
-            if (isInCombat)
+            // 전투 중일 때
+            else if (isInCombat)
             {
                 Gizmos.color = Color.red;
                 Gizmos.DrawWireSphere(transform.position, 0.4f);
+                // 전투 중임을 표시하는 X 표시
+                Vector3 pos = transform.position;
+                Gizmos.DrawLine(pos + Vector3.left * 0.3f + Vector3.up * 0.3f,
+                               pos + Vector3.right * 0.3f + Vector3.down * 0.3f);
+                Gizmos.DrawLine(pos + Vector3.left * 0.3f + Vector3.down * 0.3f,
+                               pos + Vector3.right * 0.3f + Vector3.up * 0.3f);
+            }
+            // 이동 중
+            else
+            {
+                Gizmos.color = Color.green;
+                Gizmos.DrawWireSphere(transform.position, 0.25f);
+            }
+
+            // 현재 목표 웨이포인트로의 선 표시 (전투 중이 아닐 때만)
+            if (hasStartedMoving && !isInCombat && waypoints != null && currentWaypointIndex < waypoints.Length)
+            {
+                Gizmos.color = Color.yellow;
+                Gizmos.DrawLine(transform.position, waypoints[currentWaypointIndex].position);
             }
         }
     }
